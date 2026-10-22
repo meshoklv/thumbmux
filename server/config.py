@@ -6,8 +6,11 @@ authentication is configured in ``auth.py`` (THUMBMUX_PASSWORD).
 """
 import os
 
-# Never act on the tmux server of whoever launched us (a nested $TMUX would
-# silently redirect every tmux command there). Use TMUX_TMPDIR to choose a socket.
+import shutil
+import stat
+
+# Never act on the tmux server of whoever launched us: a nested $TMUX silently
+# redirects every tmux command to the outer server.
 os.environ.pop("TMUX", None)
 
 
@@ -76,3 +79,21 @@ STT_TIMEOUT = _int("THUMBMUX_STT_TIMEOUT", 120)
 MAX_UPLOAD = 15 * 1024 * 1024        # photos
 MAX_FILE = 100 * 1024 * 1024         # arbitrary files into the project dir
 MAX_AUDIO = 30 * 1024 * 1024
+
+# --- tmux socket -------------------------------------------------------
+# Optional: an explicit tmux socket path (tmux -S). When set, every tmux call
+# made by this server, its shell helpers and the terminal goes to THAT server
+# only - a `tmux` shim is put first on PATH. Handy for running next to (and
+# never touching) your normal tmux sessions.
+TMUX_SOCKET = _env("THUMBMUX_TMUX_SOCKET")
+if TMUX_SOCKET:
+    _real = shutil.which("tmux")
+    if not _real:
+        raise SystemExit("thumbmux: tmux not found in PATH")
+    _bindir = os.path.join(DATA_DIR, "bin")
+    os.makedirs(_bindir, mode=0o700, exist_ok=True)
+    _shim = os.path.join(_bindir, "tmux")
+    with open(_shim, "w") as _f:
+        _f.write('#!/bin/sh\nexec "%s" -S "%s" "$@"\n' % (_real, TMUX_SOCKET))
+    os.chmod(_shim, 0o700 | stat.S_IRUSR)
+    os.environ["PATH"] = _bindir + os.pathsep + os.environ.get("PATH", "")

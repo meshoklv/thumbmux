@@ -33,7 +33,8 @@ class ServerTest(unittest.TestCase):
         cls.port = free_port()
         env = {k: v for k, v in os.environ.items() if k != "TMUX"}
         env.update({
-            "TMUX_TMPDIR": cls.tmp,                 # private tmux server
+            "THUMBMUX_TMUX_SOCKET": os.path.join(cls.tmp, "tmux.sock"),   # private tmux server
+            "TMUX_TMPDIR": cls.tmp,   # second layer: even the default socket is private
             "THUMBMUX_SESSION": "ci-test",
             "THUMBMUX_DATA_DIR": os.path.join(cls.tmp, "data"),
             "THUMBMUX_WORKDIR": cls.tmp,
@@ -59,7 +60,9 @@ class ServerTest(unittest.TestCase):
             cls.proc.wait(10)
         except subprocess.TimeoutExpired:
             cls.proc.kill()
-        subprocess.run(["tmux", "kill-server"], env=cls.env, capture_output=True)
+        subprocess.run(["tmux", "-S", os.path.join(cls.tmp, "tmux.sock"), "kill-server"],
+                       env={k: v for k, v in os.environ.items() if k != "TMUX"},
+                       capture_output=True)
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def req(self, method, path, body=None, headers=None):

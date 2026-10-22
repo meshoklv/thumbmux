@@ -123,6 +123,7 @@ All configuration is via environment variables (`.env.example` lists them).
 | `THUMBMUX_WORKDIR` | `$HOME` | Start directory for new tabs. |
 | `THUMBMUX_AGENTS` | `claude,codex,opencode,gemini,aider` | Commands offered in the "new tab" menu. |
 | `THUMBMUX_DATA_DIR` | `~/.thumbmux` | Settings, favourites, password hash, session key (mode 600). |
+| `THUMBMUX_TMUX_SOCKET` | – | Explicit tmux socket (`tmux -S`): all tmux calls go to that server only, never to your normal one. |
 | `THUMBMUX_TMUX_CONF` | `~/.tmux.conf` | tmux config applied at start (`deploy/tmux.conf` recommended). |
 | `THUMBMUX_STT_URL` | – | OpenAI-compatible transcription endpoint. **Empty = voice input is off.** |
 | `THUMBMUX_STT_KEY` / `_MODEL` / `_LANGUAGE` | – / `whisper-1` / – | Credentials and model for the endpoint. |
@@ -149,7 +150,7 @@ thumbmux gives whoever logs in **a shell on the machine it runs on**. Treat it l
 
 **Can I use it with plain tmux sessions without agents?** Yes; agents are just commands typed into a new window. Set `THUMBMUX_AGENTS=` to show only "Terminal".
 
-**Which tmux server does it use?** The default one of the user running it (or the one selected by `TMUX_TMPDIR`). It never inherits a nested `$TMUX`.
+**Which tmux server does it use?** The default one of the user running it (or the one given by `THUMBMUX_TMUX_SOCKET`). It never inherits a nested `$TMUX`.
 
 ## Contributing
 
