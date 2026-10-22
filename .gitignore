@@ -1,0 +1,11 @@
+.env
+*.env
+!.env.example
+password
+session.key
+.thumbmux/
+__pycache__/
+*.pyc
+*.bak
+*.log
+node_modules/

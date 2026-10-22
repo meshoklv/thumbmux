@@ -1,0 +1,33 @@
+# OPTIONAL: run thumbmux inside a VPN kill-switch.
+#
+# All egress of the container (git, npm, agent API calls ...) goes through a
+# WireGuard tunnel (gluetun, FIREWALL=on). If the tunnel drops, the container
+# has NO network at all - nothing leaks around the VPN.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vpn.yml up --build
+#
+# Status: written from a working multi-user deployment; not re-tested in this
+# exact single-user form. Fill the WIREGUARD_* values in .env first.
+services:
+  vpn:
+    image: qmcgaw/gluetun
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun:/dev/net/tun]
+    ports:
+      - "127.0.0.1:${THUMBMUX_PORT:-7682}:7682"   # moved here: thumbmux shares this netns
+    environment:
+      VPN_SERVICE_PROVIDER: custom
+      VPN_TYPE: wireguard
+      WIREGUARD_PRIVATE_KEY: ${WIREGUARD_PRIVATE_KEY}
+      WIREGUARD_ADDRESSES: ${WIREGUARD_ADDRESSES}
+      WIREGUARD_PUBLIC_KEY: ${WIREGUARD_PUBLIC_KEY}
+      WIREGUARD_ENDPOINT_IP: ${WIREGUARD_ENDPOINT_IP}
+      WIREGUARD_ENDPOINT_PORT: ${WIREGUARD_ENDPOINT_PORT:-51820}
+      FIREWALL: "on"
+      FIREWALL_INPUT_PORTS: "7682"
+    restart: unless-stopped
+
+  thumbmux:
+    network_mode: "service:vpn"
+    depends_on: [vpn]
+    ports: !reset []

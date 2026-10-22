@@ -1,0 +1,7 @@
+# TLS reverse proxy in front of thumbmux (Caddy obtains the certificate itself).
+# Keep THUMBMUX_HOST=127.0.0.1 and set THUMBMUX_TRUST_PROXY=1 so the session
+# cookie gets the Secure flag. Caddy preserves the Host header and proxies
+# WebSockets automatically.
+term.example.com {
+	reverse_proxy 127.0.0.1:7682
+}

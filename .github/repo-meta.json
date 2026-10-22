@@ -1,0 +1,6 @@
+{
+  "name": "thumbmux",
+  "description": "Mobile-first, password-protected web terminal for tmux and AI coding agents: tabs, swipe scroll, uploads, voice.",
+  "homepage": "",
+  "topics": ["tmux", "web-terminal", "mobile", "ttyd", "claude-code", "ai-agents", "self-hosted", "python", "docker", "remote-terminal"]
+}

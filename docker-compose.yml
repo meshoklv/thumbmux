@@ -1,0 +1,22 @@
+# docker compose up --build
+# The port is published on the HOST's loopback only. Put a TLS reverse proxy
+# (Caddy / nginx / Tailscale serve) in front to reach it from your phone.
+services:
+  thumbmux:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${THUMBMUX_PORT:-7682}:7682"
+    environment:
+      # Empty = a random password is generated and printed once in `docker compose logs`.
+      THUMBMUX_PASSWORD: ${THUMBMUX_PASSWORD:-}
+      THUMBMUX_AGENTS: ${THUMBMUX_AGENTS:-claude,codex,opencode,gemini,aider}
+      THUMBMUX_STT_URL: ${THUMBMUX_STT_URL:-}
+      THUMBMUX_STT_KEY: ${THUMBMUX_STT_KEY:-}
+      THUMBMUX_STT_MODEL: ${THUMBMUX_STT_MODEL:-whisper-1}
+      THUMBMUX_TRUST_PROXY: ${THUMBMUX_TRUST_PROXY:-0}
+      THUMBMUX_ALLOWED_ORIGINS: ${THUMBMUX_ALLOWED_ORIGINS:-}
+    volumes:
+      - thumbmux-home:/home/thumb        # your projects, tmux config, agent logins
+volumes:
+  thumbmux-home:
