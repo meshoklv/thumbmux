@@ -8,6 +8,7 @@
 
 <p align="center">
   <img alt="License" src="https://img.shields.io/github/license/meshoklv/thumbmux?style=flat-square">
+  <a href="https://github.com/meshoklv/thumbmux/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/meshoklv/thumbmux/ci.yml?branch=main&style=flat-square"></a>
   <img alt="Python" src="https://img.shields.io/badge/python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Dependencies" src="https://img.shields.io/badge/dependencies-tmux%20%2B%20ttyd-1bb91f?style=flat-square">
   <img alt="Auth" src="https://img.shields.io/badge/auth-required-e6b450?style=flat-square">
