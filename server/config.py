@@ -97,3 +97,18 @@ if TMUX_SOCKET:
         _f.write('#!/bin/sh\nexec "%s" -S "%s" "$@"\n' % (_real, TMUX_SOCKET))
     os.chmod(_shim, 0o700 | stat.S_IRUSR)
     os.environ["PATH"] = _bindir + os.pathsep + os.environ.get("PATH", "")
+
+# --- Telegram integration (optional, off unless a token is set) -----------
+# Needs BOTH THUMBMUX_TG_BOT_TOKEN and a non-empty THUMBMUX_TG_ALLOWED_CHAT_IDS:
+# the bot types into your shell, so without an allowlist it will not start.
+# The token comes from the environment only and is never logged.
+TG_TOKEN = _env("THUMBMUX_TG_BOT_TOKEN").strip()
+TG_ALLOWED_RAW = _env("THUMBMUX_TG_ALLOWED_CHAT_IDS")
+PUBLIC_URL = _env("THUMBMUX_PUBLIC_URL").strip().rstrip("/")
+# Change the API base only for a self-hosted Bot API server (or tests).
+TG_API_BASE = _env("THUMBMUX_TG_API_BASE", "https://api.telegram.org").rstrip("/")
+TG_POLL_TIMEOUT = _int("THUMBMUX_TG_POLL_TIMEOUT", 25)      # long-poll seconds
+TG_RATE_PER_MIN = _int("THUMBMUX_TG_RATE_PER_MIN", 20)      # inputs into tmux per chat
+TG_MIN_WORK_SECS = _int("THUMBMUX_TG_MIN_WORK_SECS", 8)     # shorter "work" bursts are not announced
+TG_NOTIFY = [s.strip() for s in _env("THUMBMUX_TG_NOTIFY", "ask,done").split(",") if s.strip()]
+TG_TAIL_LINES = _int("THUMBMUX_TG_TAIL_LINES", 10)

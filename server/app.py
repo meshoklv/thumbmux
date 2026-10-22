@@ -30,6 +30,7 @@ import config
 import auth as authmod
 import termproxy
 import voice
+import tgbot
 
 SESSION = config.SESSION
 # Version of the code = fingerprint of this file at startup. Exposed through
@@ -1099,6 +1100,9 @@ def tmux(*args, check=False):
 
 
 TMUX_CONF = config.TMUX_CONF
+
+
+_ready = False
 
 
 def ensure_session():
@@ -9487,6 +9491,91 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(500, {"error": str(e)})
 
 
+# -- Telegram bridge (optional; see tgbot.py) -------------------------------
+WID_RE = re.compile(r"^@\d{1,9}$")
+
+
+class TgBackend:
+    """What the Telegram bot may do with tmux: list tabs, read a tab's tail,
+    type into one tab, open a new tab. Targets are tmux window ids (@N)."""
+
+    def windows(self, fresh=False):
+        if fresh:
+            _state_invalidate()       # a tab opened a second ago must be visible
+        return [{"id": w["id"], "index": w["index"], "name": w["name"],
+                 "active": w["active"], "st": w.get("st", "idle")}
+                for w in list_windows()]
+
+    def tail(self, wid, n):
+        if not WID_RE.match(wid):
+            return []
+        rc, out = tmux("capture-pane", "-p", "-t", wid)
+        lines = [l for l in out.splitlines() if l.strip()] if rc == 0 else []
+        return lines[-n:]
+
+    def send(self, wid, text):
+        if not WID_RE.match(wid):
+            return False
+        tmux("if-shell", "-F", "-t", wid, "#{pane_in_mode}",
+             f"send-keys -t {wid} -X cancel")
+        if "\n" not in text and len(text.encode("utf-8", "replace")) <= 4000:
+            rc, _ = tmux("send-keys", "-t", wid, "-l", "--", text)
+        else:
+            rc1, _ = tmux_stdin(text, "load-buffer", "-b", "m_tg", "-")
+            rc2, _ = tmux("paste-buffer", "-b", "m_tg", "-p", "-d", "-t", wid)
+            rc = rc1 or rc2
+        if rc != 0:
+            return False
+        time.sleep(0.25)      # let a TUI take the paste before Enter
+        rc, _ = tmux("send-keys", "-t", wid, "Enter")
+        return rc == 0
+
+    def new_window(self, name, agent=None):
+        ensure_session()
+        cfg = load_settings()
+        cmd = agent or cfg.get("default_cmd") or "shell"
+        if cmd not in _ALLOWED_CMDS:
+            raise ValueError("agent unavailable: %s (allowed: %s)"
+                             % (cmd, ", ".join(sorted(_ALLOWED_CMDS))))
+        cwd = cfg.get("default_cwd") or WORKDIR
+        rc, out = tmux("new-window", "-d", "-P", "-t", SESSION, "-c", cwd,
+                       "-F", "#{window_id}")
+        wid = out.strip()
+        if rc != 0 or not WID_RE.match(wid):
+            raise RuntimeError("new-window failed")
+        tmux("rename-window", "-t", wid, name)
+        tmux("set-option", "-w", "-t", wid, "@manual", "1")
+        if cmd != "shell":
+            tmux("send-keys", "-t", wid, "-l", "--", cmd)
+            tmux("send-keys", "-t", wid, "Enter")
+        _state_invalidate()
+        return wid
+
+
+def start_telegram():
+    """Start the bot only when a token AND a valid allowlist are configured."""
+    if not config.TG_TOKEN:
+        return None
+    try:
+        allowed = tgbot.parse_allowed(config.TG_ALLOWED_RAW)
+    except ValueError as e:
+        print("Telegram integration NOT started: %s" % e, flush=True)
+        return None
+    if not allowed:
+        print("Telegram integration NOT started: THUMBMUX_TG_ALLOWED_CHAT_IDS is "
+              "empty. The bot types into your shell, so an allowlist is mandatory.",
+              flush=True)
+        return None
+    bot = tgbot.Bot(TgBackend(), config.TG_TOKEN, allowed, DATA_DIR,
+                    public_url=config.PUBLIC_URL, api_base=config.TG_API_BASE,
+                    stt=voice, poll_timeout=config.TG_POLL_TIMEOUT,
+                    rate_per_min=config.TG_RATE_PER_MIN,
+                    min_work=config.TG_MIN_WORK_SECS, notify=config.TG_NOTIFY,
+                    tail_lines=config.TG_TAIL_LINES)
+    bot.start()
+    return bot
+
+
 AUTH = None
 
 
@@ -9496,6 +9585,7 @@ def main():
     ensure_session()
     termproxy.start()            # ttyd on a private unix socket
     threading.Thread(target=_cleanup_loop, daemon=True).start()
+    start_telegram()
     srv = ThreadingHTTPServer(LISTEN, Handler)
     host, port = LISTEN
     print("thumbmux listening on http://%s:%d  (login required)" % (host, port), flush=True)

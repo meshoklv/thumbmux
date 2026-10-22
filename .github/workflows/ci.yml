@@ -9,5 +9,5 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y tmux ttyd
       - name: Compile
         run: python3 -m py_compile server/*.py
-      - name: Security smoke tests
+      - name: Tests (security smoke + Telegram integration against a fake Bot API)
         run: python3 -m unittest discover -s tests -v
